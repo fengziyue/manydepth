@@ -1,0 +1,15 @@
+__pycache__
+*.pyc
+*_disp.jpg
+*_disp.npy
+*.npz
+*.jpg
+*.pcd
+*.mp4
+kitti_data
+models
+log
+.ipynb_checkpoints
+.idea
+less_used
+wandb
