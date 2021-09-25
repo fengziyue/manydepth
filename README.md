@@ -15,6 +15,15 @@ We introduce ***ManyDepth***, an adaptive approach to dense depth estimation tha
 * ✅ **Efficient**: Only one forward pass at test time. No test-time optimization needed.
 * ✅ **State-of-the-art** self-supervised monocular-trained depth estimation on KITTI and CityScapes.
 
+
+<p align="center">
+  <a
+href="https://storage.googleapis.com/niantic-lon-static/research/manydepth/manydepth_cvpr_cc.mp4">
+  <img src="assets/video_thumbnail.png" alt="5 minute CVPR presentation video link" width="400">
+  </a>
+</p>
+
+
 ## Overview
 
 Cost volumes are commonly used for estimating depths from multiple input views:
@@ -104,6 +113,8 @@ python -m manydepth.train \
     --height 192 --width 512
 ```
 
+Note here the `--freeze_teacher_epoch 5` command - we found this to be important for Cityscapes models, due to the large number of images in the training set. 
+
 This assumes you have already preprocessed the CityScapes dataset using SfMLearner's [prepare_train_data.py](https://github.com/tinghuiz/SfMLearner/blob/master/data/prepare_train_data.py) script.
 We used the following command:
 
@@ -156,6 +167,10 @@ During evaluation, we crop and evaluate on the middle 50% of the images.
 
 We provide ground truth depth files [HERE](https://storage.googleapis.com/niantic-lon-static/research/manydepth/gt_depths_cityscapes.zip),
 which were converted from pixel disparities using intrinsics and the known baseline. Download this and unzip into `splits/cityscapes`.
+
+
+If you want to evaluate a teacher network (i.e. the monocular network used for consistency loss), then add the flag `--eval_teacher`. This will 
+load the weights of `mono_encoder.pth` and `mono_depth.pth`, which are provided for our KITTI models. 
 
 ## 🖼 Running on your own images
 
