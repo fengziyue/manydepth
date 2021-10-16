@@ -299,7 +299,7 @@ class Trainer:
                 # missing cost volume augmentation -> set all poses to 0, the cost volume will
                 # skip these frames
                 elif rand_num < 0.5:
-                    relative_poses[batch_idx] *= 0
+                    relative_poses[batch_idx] *= 0  # will skip in ResnetEncoderMatching.match_features()
                     augmentation_mask[batch_idx] += 1
         outputs['augmentation_mask'] = augmentation_mask
 

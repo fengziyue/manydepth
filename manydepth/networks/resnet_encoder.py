@@ -222,7 +222,7 @@ class ResnetEncoderMatching(nn.Module):
             cost_volume = cost_volume / (counts + 1e-7)
 
             # if some missing values for a pixel location (i.e. some depths landed outside) then
-            # set to max of existing values
+            # set to max of existing values to prepare for later lowest_cost computing
             missing_val_mask = (cost_volume == 0).float()
             if self.set_missing_to_max:
                 cost_volume = cost_volume * (1 - missing_val_mask) + \
@@ -294,7 +294,7 @@ class ResnetEncoderMatching(nn.Module):
         viz_cost_vol = cost_volume.clone().detach()
         viz_cost_vol[viz_cost_vol == 0] = 100
         mins, argmin = torch.min(viz_cost_vol, 1)
-        lowest_cost = self.indices_to_disparity(argmin)
+        lowest_cost = self.indices_to_disparity(argmin)  # Also for computing untrustworthy motion mask
 
         # mask the cost volume based on the confidence
         cost_volume *= confidence_mask.unsqueeze(1)
