@@ -119,7 +119,7 @@ def evaluate(opt):
             dataset = datasets.KITTIRAWDataset(opt.data_path, filenames,
                                                encoder_dict['height'], encoder_dict['width'],
                                                frames_to_load, 4,
-                                               is_train=False)
+                                               is_train=False, opt=opt)
         dataloader = DataLoader(dataset, opt.batch_size, shuffle=False, num_workers=opt.num_workers,
                                 pin_memory=True, drop_last=False)
 
@@ -152,9 +152,17 @@ def evaluate(opt):
             pose_enc.eval()
             pose_dec.eval()
 
+            if opt.PDR:
+                beam_encoder_dict = torch.load(os.path.join(opt.load_weights_folder, "beam_encoder.pth"))
+                beam_encoder = networks.ResnetEncoder(opt.num_layers, False, pdr=True)
+                beam_encoder.load_state_dict(beam_encoder_dict)
+                beam_encoder.eval()
+
             if torch.cuda.is_available():
                 pose_enc.cuda()
                 pose_dec.cuda()
+                if opt.PDR:
+                    beam_encoder.cuda()
 
         encoder = encoder_class(**encoder_opts)
         depth_decoder = networks.DepthDecoder(encoder.num_ch_enc)
@@ -246,7 +254,12 @@ def evaluate(opt):
                                                            K,
                                                            invK,
                                                            min_depth_bin, max_depth_bin)
-                    output = depth_decoder(output)
+
+                    if opt.PDR:
+                        beam_features = beam_encoder(data["pdr"].cuda())
+                        output = depth_decoder(output, beam_features=beam_features)
+                    else:
+                        output = depth_decoder(output)
 
                 pred_disp, _ = disp_to_depth(output[("disp", 0)], opt.min_depth, opt.max_depth)
                 pred_disp = pred_disp.cpu()[:, 0].numpy()
