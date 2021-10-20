@@ -5,6 +5,7 @@
 # available in the LICENSE file.
 
 import os
+import torch
 os.environ["MKL_NUM_THREADS"] = "1"  # noqa F402
 os.environ["NUMEXPR_NUM_THREADS"] = "1"  # noqa F402
 os.environ["OMP_NUM_THREADS"] = "1"  # noqa F402
@@ -98,6 +99,39 @@ class KITTIRAWDataset(KITTIDataset):
             depth_gt = np.fliplr(depth_gt)
 
         return depth_gt
+
+    def load_pdr(self, folder, frame_index, side, do_flip):
+        if not self.opt.random_sample > 0:
+            folder_name = '2channel{}beam'.format(self.opt.nbeams)
+            if self.opt.nbeams == 4:
+                folder_name = '2channel'
+            elif self.opt.nbeams == -4:
+                folder_name = '2channel'
+                folder_name_m1 = '2cha_4beamT-2'
+        else:
+            folder_name = 'r{}_2cha'.format(self.opt.random_sample)
+
+        filename = os.path.join(
+            self.data_path,
+            folder,
+            "{}/{}_{}_{}.npy".format(folder_name, int(frame_index), side, do_flip))
+        pdr = np.load(filename)
+        pdr = torch.from_numpy(pdr.astype(np.float32))
+
+        if self.opt.nbeams == -4:
+            filename = os.path.join(
+                self.data_path,
+                folder,
+                "{}/{}_{}_{}.npy".format(folder_name_m1, int(frame_index), side, do_flip))
+            try:
+                pdr_m1 = np.load(filename)
+                pdr_m1 = torch.from_numpy(pdr_m1.astype(np.float32))
+            except:
+                pdr_m1 = pdr
+                # print('failed to load 2cha-1 at {} {} {}'.format(frame_index, side, do_flip))
+            pdr = torch.cat([pdr, pdr_m1], 0)
+            #pdr = pdr_m1
+        return pdr
 
 
 class KITTIOdomDataset(KITTIDataset):

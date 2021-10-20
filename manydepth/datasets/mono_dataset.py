@@ -41,6 +41,7 @@ class MonoDataset(data.Dataset):
                  num_scales,
                  is_train=False,
                  img_ext='.jpg',
+                 opt=None
                  ):
         super(MonoDataset, self).__init__()
 
@@ -59,6 +60,8 @@ class MonoDataset(data.Dataset):
 
         self.loader = pil_loader
         self.to_tensor = transforms.ToTensor()
+
+        self.opt = opt
 
         # We need to specify augmentations differently in newer versions of torchvision.
         # We first try the newer tuple version; if this fails we fall back to scalars
@@ -194,6 +197,9 @@ class MonoDataset(data.Dataset):
             inputs["depth_gt"] = np.expand_dims(depth_gt, 0)
             inputs["depth_gt"] = torch.from_numpy(inputs["depth_gt"].astype(np.float32))
 
+        if self.opt.PDR:
+            inputs["pdr"] = self.load_pdr(folder, frame_index, side, do_flip)
+
         return inputs
 
     def get_color(self, folder, frame_index, side, do_flip):
@@ -203,4 +209,7 @@ class MonoDataset(data.Dataset):
         raise NotImplementedError
 
     def get_depth(self, folder, frame_index, side, do_flip):
+        raise NotImplementedError
+
+    def load_pdr(self, folder, frame_index, side, do_flip):
         raise NotImplementedError

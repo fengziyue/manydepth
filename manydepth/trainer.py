@@ -88,6 +88,13 @@ class Trainer:
         self.parameters_to_train += list(self.models["encoder"].parameters())
         self.parameters_to_train += list(self.models["depth"].parameters())
 
+        if self.opt.PDR:
+            self.models["beam_encoder"] = networks.ResnetEncoder(
+                self.opt.num_layers, self.opt.weights_init == "pretrained",
+                pdr=True)
+            self.models["beam_encoder"].to(self.device)
+            self.parameters_to_train += list(self.models["beam_encoder"].parameters())
+
         self.models["mono_encoder"] = \
             networks.ResnetEncoder(18, self.opt.weights_init == "pretrained")
         self.models["mono_encoder"].to(self.device)
@@ -145,13 +152,13 @@ class Trainer:
 
         train_dataset = self.dataset(
             self.opt.data_path, train_filenames, self.opt.height, self.opt.width,
-            frames_to_load, 4, is_train=True, img_ext=img_ext)
+            frames_to_load, 4, is_train=True, img_ext=img_ext, opt=self.opt)
         self.train_loader = DataLoader(
             train_dataset, self.opt.batch_size, True,
             num_workers=self.opt.num_workers, pin_memory=True, drop_last=True)
         val_dataset = self.dataset(
             self.opt.data_path, val_filenames, self.opt.height, self.opt.width,
-            frames_to_load, 4, is_train=False, img_ext=img_ext)
+            frames_to_load, 4, is_train=False, img_ext=img_ext, opt=self.opt)
         self.val_loader = DataLoader(
             val_dataset, self.opt.batch_size, True,
             num_workers=self.opt.num_workers, pin_memory=True, drop_last=True)
@@ -334,7 +341,11 @@ class Trainer:
                                                                         inputs[('inv_K', 2)],
                                                                         min_depth_bin=min_depth_bin,
                                                                         max_depth_bin=max_depth_bin)
-        outputs.update(self.models["depth"](features))
+        if self.opt.PDR:
+            beam_features = self.models["beam_encoder"](inputs["pdr"])
+            outputs.update(self.models["depth"](features, beam_features=beam_features))
+        else:
+            outputs.update(self.models["depth"](features))
 
         outputs["lowest_cost"] = F.interpolate(lowest_cost.unsqueeze(1),
                                                [self.opt.height, self.opt.width],

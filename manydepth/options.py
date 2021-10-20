@@ -18,7 +18,7 @@ class MonodepthOptions:
         self.parser.add_argument("--data_path",
                                  type=str,
                                  help="path to the training data",
-                                 default=os.path.join(file_dir, "kitti_data"))
+                                 default="kitti_data")
         self.parser.add_argument("--log_dir",
                                  type=str,
                                  help="log directory",
@@ -234,6 +234,16 @@ class MonodepthOptions:
         self.parser.add_argument('--eval_teacher',
                                  action='store_true',
                                  help='If set, the teacher network will be evaluated')
+
+        # LiDAR
+        self.parser.add_argument("--PDR",
+                                 help="Generate expanded depth and confidence map",
+                                 action="store_true")
+        self.parser.add_argument("--random_sample",
+                                 type=int,
+                                 help="num points for random sampling",
+                                 default=-1)
+        self.parser.add_argument('--nbeams', default=4, type=int)
 
     def parse(self):
         self.options = self.parser.parse_args()

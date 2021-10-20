@@ -335,7 +335,7 @@ class ResnetEncoder(nn.Module):
     """Pytorch module for a resnet encoder
     """
 
-    def __init__(self, num_layers, pretrained, num_input_images=1, **kwargs):
+    def __init__(self, num_layers, pretrained, num_input_images=1, pdr=False):
         super(ResnetEncoder, self).__init__()
 
         self.num_ch_enc = np.array([64, 64, 128, 256, 512])
@@ -353,6 +353,12 @@ class ResnetEncoder(nn.Module):
             self.encoder = resnet_multiimage_input(num_layers, pretrained, num_input_images)
         else:
             self.encoder = resnets[num_layers](pretrained)
+
+        if pdr:
+            if num_input_images > 1:
+                self.encoder.conv1 = nn.Conv2d(num_input_images * 2, 64, kernel_size=7, stride=2, padding=3, bias=False)
+            else:
+                self.encoder.conv1 = nn.Conv2d(2, 64, kernel_size=(7, 7), stride=(2, 2), padding=(3, 3), bias=False)
 
         if num_layers > 34:
             self.num_ch_enc[1:] *= 4
