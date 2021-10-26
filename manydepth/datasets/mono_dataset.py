@@ -155,8 +155,8 @@ class MonoDataset(data.Dataset):
                         folder, frame_index, other_side, do_flip)
                 else:
                     try:
-                        inputs[("color", i, -1)] = self.get_color(
-                            folder, frame_index + i, side, do_flip)
+                        inputs[("color", i, -1)] = self.get_color(folder, frame_index + i, side, do_flip)
+                        inputs[("pdr", i, 0)] = self.load_pdr(folder, frame_index + i, side, do_flip)
                     except FileNotFoundError as e:
                         if i != 0:
                             # fill with dummy values

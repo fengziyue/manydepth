@@ -443,8 +443,8 @@ class Trainer:
                         pose_inputs = [pose_feats[fi], pose_feats[fi + 1]]
                         pose_inputs = [self.models["pose_encoder"](torch.cat(pose_inputs, 1))]
                         if self.opt.PDR:
-                            beam_pose_inputs = [beam_pose_feats[f_i], beam_pose_feats[fi + 1]]
-                            beam_pose_inputs = [self.models["pose_encoder_beam"](torch.cat(beam_pose_inputs, 1))]
+                            beam_pose_inputs = [beam_pose_feats[fi], beam_pose_feats[fi + 1]]
+                            beam_pose_inputs = [self.models["beam_encoder_pose"](torch.cat(beam_pose_inputs, 1))]
                             axisangle, translation = self.models["pose"](pose_inputs, beam_inputs=beam_pose_inputs)
                         else:
                             axisangle, translation = self.models["pose"](pose_inputs)
@@ -459,8 +459,8 @@ class Trainer:
                         pose_inputs = [pose_feats[fi - 1], pose_feats[fi]]
                         pose_inputs = [self.models["pose_encoder"](torch.cat(pose_inputs, 1))]
                         if self.opt.PDR:
-                            beam_pose_inputs = [beam_pose_feats[f_i - 1], beam_pose_feats[fi]]
-                            beam_pose_inputs = [self.models["pose_encoder_beam"](torch.cat(beam_pose_inputs, 1))]
+                            beam_pose_inputs = [beam_pose_feats[fi - 1], beam_pose_feats[fi]]
+                            beam_pose_inputs = [self.models["beam_encoder_pose"](torch.cat(beam_pose_inputs, 1))]
                             axisangle, translation = self.models["pose"](pose_inputs, beam_inputs=beam_pose_inputs)
                         else:
                             axisangle, translation = self.models["pose"](pose_inputs)

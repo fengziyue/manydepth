@@ -30,8 +30,12 @@ class PoseDecoder(nn.Module):
 
         self.net = nn.ModuleList(list(self.convs.values()))
 
-    def forward(self, input_features):
-        last_features = [f[-1] for f in input_features]
+    def forward(self, input_features, beam_inputs=None):
+        if beam_inputs is not None:
+            # print(input_features[0].shape, beam_inputs[0].shape)
+            last_features = [input_features[0][-1] + beam_inputs[0][-1]]
+        else:
+            last_features = [f[-1] for f in input_features]
 
         cat_features = [self.relu(self.convs["squeeze"](f)) for f in last_features]
         cat_features = torch.cat(cat_features, 1)
