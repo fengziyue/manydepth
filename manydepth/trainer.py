@@ -95,6 +95,12 @@ class Trainer:
             self.models["beam_encoder"].to(self.device)
             self.parameters_to_train += list(self.models["beam_encoder"].parameters())
 
+            self.models["beam_encoder_pose"] = networks.ResnetEncoder(
+                self.opt.num_layers, self.opt.weights_init == "pretrained",
+                num_input_images=self.num_pose_frames, pdr=True)
+            self.models["beam_encoder_pose"].to(self.device)
+            self.parameters_to_train += list(self.models["beam_encoder_pose"].parameters())
+
         self.models["mono_encoder"] = \
             networks.ResnetEncoder(18, self.opt.weights_init == "pretrained")
         self.models["mono_encoder"].to(self.device)
@@ -399,17 +405,26 @@ class Trainer:
             # predict poses for reprojection loss
             # select what features the pose network takes as input
             pose_feats = {f_i: inputs["color_aug", f_i, 0] for f_i in self.opt.frame_ids}
+            if self.opt.PDR:
+                beam_pose_feats = {f_i: inputs["pdr", f_i, 0] for f_i in self.opt.frame_ids}
             for f_i in self.opt.frame_ids[1:]:
                 if f_i != "s":
                     # To maintain ordering we always pass frames in temporal order
                     if f_i < 0:
                         pose_inputs = [pose_feats[f_i], pose_feats[0]]
+                        if self.opt.PDR:
+                            beam_pose_inputs = [beam_pose_feats[f_i], beam_pose_feats[0]]
                     else:
                         pose_inputs = [pose_feats[0], pose_feats[f_i]]
+                        if self.opt.PDR:
+                            beam_pose_inputs = [beam_pose_feats[0], beam_pose_feats[f_i]]
 
                     pose_inputs = [self.models["pose_encoder"](torch.cat(pose_inputs, 1))]
-
-                    axisangle, translation = self.models["pose"](pose_inputs)
+                    if self.opt.PDR:
+                        beam_pose_inputs = [self.models["beam_encoder_pose"](torch.cat(beam_pose_inputs, 1))]
+                        axisangle, translation = self.models["pose"](pose_inputs, beam_inputs=beam_pose_inputs)
+                    else:
+                        axisangle, translation = self.models["pose"](pose_inputs)
                     outputs[("axisangle", 0, f_i)] = axisangle
                     outputs[("translation", 0, f_i)] = translation
 
@@ -419,13 +434,20 @@ class Trainer:
 
             # now we need poses for matching - compute without gradients
             pose_feats = {f_i: inputs["color_aug", f_i, 0] for f_i in self.matching_ids}
+            if self.opt.PDR:
+                beam_pose_feats = {f_i: inputs["pdr", f_i, 0] for f_i in self.matching_ids}
             with torch.no_grad():
                 # compute pose from 0->-1, -1->-2, -2->-3 etc and multiply to find 0->-3
                 for fi in self.matching_ids[1:]:
                     if fi < 0:
                         pose_inputs = [pose_feats[fi], pose_feats[fi + 1]]
                         pose_inputs = [self.models["pose_encoder"](torch.cat(pose_inputs, 1))]
-                        axisangle, translation = self.models["pose"](pose_inputs)
+                        if self.opt.PDR:
+                            beam_pose_inputs = [beam_pose_feats[f_i], beam_pose_feats[fi + 1]]
+                            beam_pose_inputs = [self.models["pose_encoder_beam"](torch.cat(beam_pose_inputs, 1))]
+                            axisangle, translation = self.models["pose"](pose_inputs, beam_inputs=beam_pose_inputs)
+                        else:
+                            axisangle, translation = self.models["pose"](pose_inputs)
                         pose = transformation_from_parameters(
                             axisangle[:, 0], translation[:, 0], invert=True)
 
@@ -436,7 +458,12 @@ class Trainer:
                     else:
                         pose_inputs = [pose_feats[fi - 1], pose_feats[fi]]
                         pose_inputs = [self.models["pose_encoder"](torch.cat(pose_inputs, 1))]
-                        axisangle, translation = self.models["pose"](pose_inputs)
+                        if self.opt.PDR:
+                            beam_pose_inputs = [beam_pose_feats[f_i - 1], beam_pose_feats[fi]]
+                            beam_pose_inputs = [self.models["pose_encoder_beam"](torch.cat(beam_pose_inputs, 1))]
+                            axisangle, translation = self.models["pose"](pose_inputs, beam_inputs=beam_pose_inputs)
+                        else:
+                            axisangle, translation = self.models["pose"](pose_inputs)
                         pose = transformation_from_parameters(
                             axisangle[:, 0], translation[:, 0], invert=False)
 

@@ -356,7 +356,8 @@ class ResnetEncoder(nn.Module):
 
         if pdr:
             if num_input_images > 1:
-                self.encoder.conv1 = nn.Conv2d(num_input_images * 2, 64, kernel_size=7, stride=2, padding=3, bias=False)
+                self.encoder.conv1 = nn.Conv2d(num_input_images * 2, 64, kernel_size=(7, 7), stride=(2, 2),
+                                               padding=(3, 3), bias=False)
             else:
                 self.encoder.conv1 = nn.Conv2d(2, 64, kernel_size=(7, 7), stride=(2, 2), padding=(3, 3), bias=False)
 
