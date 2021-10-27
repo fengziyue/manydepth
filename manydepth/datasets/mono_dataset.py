@@ -156,13 +156,16 @@ class MonoDataset(data.Dataset):
                 else:
                     try:
                         inputs[("color", i, -1)] = self.get_color(folder, frame_index + i, side, do_flip)
-                        inputs[("pdr", i, 0)] = self.load_pdr(folder, frame_index + i, side, do_flip)
+                        if self.opt.PDR:
+                            inputs[("pdr", i, 0)] = self.load_pdr(folder, frame_index + i, side, do_flip)
                     except FileNotFoundError as e:
                         if i != 0:
                             # fill with dummy values
                             inputs[("color", i, -1)] = \
                                 Image.fromarray(np.zeros((100, 100, 3)).astype(np.uint8))
                             poses[i] = None
+                            if self.opt.PDR:
+                                inputs[("pdr", i, 0)] = torch.zeros((2, 192, 640))
                         else:
                             raise FileNotFoundError(f'Cannot find frame - make sure your '
                                                     f'--data_path is set correctly, or try adding'

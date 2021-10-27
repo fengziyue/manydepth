@@ -76,6 +76,8 @@ def evaluate(opt):
         if idx not in frames_to_load:
             frames_to_load.append(idx)
 
+    print('Loading frames: {}'.format(frames_to_load))
+
     assert sum((opt.eval_mono, opt.eval_stereo)) == 1, \
         "Please choose mono or stereo evaluation by setting either --eval_mono or --eval_stereo"
 
@@ -158,11 +160,17 @@ def evaluate(opt):
                 beam_encoder.load_state_dict(beam_encoder_dict)
                 beam_encoder.eval()
 
+                # beam_encoder_pose_dict = torch.load(os.path.join(opt.load_weights_folder, "beam_encoder_pose.pth"))
+                # beam_encoder_pose = networks.ResnetEncoder(opt.num_layers, False, num_input_images=2, pdr=True)
+                # beam_encoder_pose.load_state_dict(beam_encoder_pose_dict)
+                # beam_encoder_pose.eval()
+
             if torch.cuda.is_available():
                 pose_enc.cuda()
                 pose_dec.cuda()
                 if opt.PDR:
                     beam_encoder.cuda()
+                    # beam_encoder_pose.cuda()
 
         encoder = encoder_class(**encoder_opts)
         depth_decoder = networks.DepthDecoder(encoder.num_ch_enc)
@@ -199,15 +207,22 @@ def evaluate(opt):
                             data["color", f_i, 0] = data[('color', 0, 0)]
 
                     # predict poses
-                    pose_feats = {f_i: data["color", f_i, 0] for f_i in frames_to_load}
-                    if torch.cuda.is_available():
-                        pose_feats = {k: v.cuda() for k, v in pose_feats.items()}
+                    pose_feats = {f_i: data["color", f_i, 0].cuda() for f_i in frames_to_load}
+                    if opt.PDR:
+                        beam_pose_feats = {f_i: data["pdr", f_i, 0].cuda() for f_i in frames_to_load}
+                    # if torch.cuda.is_available():
+                    #     pose_feats = {k: v.cuda() for k, v in pose_feats.items()}
                     # compute pose from 0->-1, -1->-2, -2->-3 etc and multiply to find 0->-3
                     for fi in frames_to_load[1:]:
                         if fi < 0:
                             pose_inputs = [pose_feats[fi], pose_feats[fi + 1]]
                             pose_inputs = [pose_enc(torch.cat(pose_inputs, 1))]
-                            axisangle, translation = pose_dec(pose_inputs)
+                            if opt.PDR and False:
+                                beam_pose_inputs = [beam_pose_feats[fi], beam_pose_feats[fi + 1]]
+                                beam_pose_inputs = [beam_encoder_pose(torch.cat(beam_pose_inputs, 1))]
+                                axisangle, translation = pose_dec(pose_inputs, beam_inputs=beam_pose_inputs)
+                            else:
+                                axisangle, translation = pose_dec(pose_inputs)
                             pose = transformation_from_parameters(
                                 axisangle[:, 0], translation[:, 0], invert=True)
 
